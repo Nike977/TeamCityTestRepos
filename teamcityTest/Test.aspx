@@ -16,7 +16,10 @@
             <input type="text" name="lastname" placeholder="Last Name">
             <br>
              Age:<br>
-            <input type="text" name="lastname" placeholder="Age">
+            <input type="text" name="age" placeholder="Age">
+            <br>
+             Phone No:<br>
+            <input type="text" name="phoneNo" placeholder="Phone No">
             <br>
             <br>
             <input type="submit" value="Submit">
