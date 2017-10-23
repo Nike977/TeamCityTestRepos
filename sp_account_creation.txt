@@ -1,0 +1,1184 @@
+USE [greenyourbills.com]
+GO
+/****** Object:  StoredProcedure [dbo].[RegisterNewAccount]    Script Date: 10/6/2017 3:56:53 PM ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+ALTER PROCEDURE [dbo].[RegisterNewAccount]
+	@CompanyName NVARCHAR(400),
+	@BaseCompanyID NVARCHAR(40),
+	@ContactFirstName NVARCHAR(200),
+	@ContactLastName NVARCHAR(200),
+	@AdminEMail NVARCHAR(100),
+	@StreetAddress VARCHAR(200),
+	@City VARCHAR(100),
+	@ZipCode VARCHAR(20),
+	@State VARCHAR(40),
+	@CompanyPrefix VARCHAR(6),
+	@DomainID NVARCHAR(510),
+	@Password NVARCHAR(100),
+	@UserName NVARCHAR(100)
+AS
+BEGIN -- procedure 
+    SET NOCOUNT ON
+    SET XACT_ABORT ON
+BEGIN TRY
+ BEGIN TRANSACTION
+	DECLARE @CompanyIDNew NVARCHAR(40)  = [dbo].[FNC_GET_LATEST_ID] ('COMPANY_ID')
+	DECLARE @ContactID NVARCHAR(100) = [dbo].[FNC_GET_LATEST_ID] ('CONTACT_ID')
+	DECLARE @LawFirm BIT = 0
+	DECLARE @Status BIT = 0
+	DECLARE @UserID NVARCHAR(100) = [dbo].[FNC_GET_LATEST_ID] ('USER_ID')
+	DECLARE @UserRoleIDNew NVARCHAR(100) = [dbo].[FNC_GET_LATEST_ID] ('USER_ROLE_ID')
+	DECLARE @IsTestFacility BIT
+	DECLARE @VisitTypeID NVARCHAR(10)
+	DECLARE @VISIT_TYPE NVARCHAR(100)
+	DECLARE @SZ_COLOR_CODE NVARCHAR(100)
+	DECLARE @I_ORDER_BY NVARCHAR(4)
+
+	DECLARE @TotalCount INT = 0
+	DECLARE @Counter INT = 1
+
+	DECLARE @user_role NVARCHAR(50)
+
+	DECLARE @UserConfigId NVARCHAR(20) = [dbo].[FNC_GET_LATEST_ID] ('USER_CONFIG')
+	DECLARE @TotalCount1 INT = 0
+	DECLARE @Counter1 INT = 1
+	DECLARE @BillStatusName  NVARCHAR(100)
+	DECLARE @ISelect int
+	DECLARE @BillStatusCode  NVARCHAR(20)
+
+	DECLARE   @InsurenceID NVARCHAR(20)
+	DECLARE   @InsurenceName NVARCHAR(20)
+	DECLARE   @CarrierCode NVARCHAR(20)
+	DECLARE   @InsurenceAddress NVARCHAR(20)
+	DECLARE   @InsurenceStreet NVARCHAR(20)
+	DECLARE   @InsurenceState NVARCHAR(20)
+	DECLARE   @InsurenceCity  NVARCHAR(20)
+	DECLARE   @InsurenceZip NVARCHAR(20)
+	DECLARE   @InsurencePhone NVARCHAR(20)
+	DECLARE   @InsurenceEmail NVARCHAR(20)
+	DECLARE   @InsurenceCompanyCode NVARCHAR(20)
+	DECLARE   @ContactPerson NVARCHAR(20)
+	DECLARE   @FaxNumber  NVARCHAR(20)
+
+	DECLARE   @InsurenceAddress1 NVARCHAR(20)
+	DECLARE   @InsuranceStreet1 NVARCHAR(20)
+	DECLARE   @InsuranceCity1 NVARCHAR(20)
+	DECLARE   @InsuranceState1 NVARCHAR(20)
+	DECLARE   @InsuranceZip1 NVARCHAR(20)
+	DECLARE   @InsuranceStateID1 NVARCHAR(20)
+	DECLARE	  @SZ_PROCEDURE_GROUP NVARCHAR(300)
+	
+	DECLARE @IsPrintable BIT
+	DECLARE @BtUnit BIT
+	DECLARE @IOrder INT
+	DECLARE @IsInOrder BIT
+	DECLARE @Code NVARCHAR(40)
+	DECLARE @Display BIT
+	DECLARE @InitialEvaluation BIT
+	DECLARE @AssociateToPatient BIT 
+	DECLARE @Include1500 BIT
+	DECLARE @ProcedureGroupID NVARCHAR(40) 
+	DECLARE @ProcedureGroupCode NVARCHAR(300)
+	--DECLARE @TypeID NVARCHAR(20)
+
+	DECLARE @DiagnosisTypeId NVARCHAR(100)
+	DECLARE @DiagnosisType NVARCHAR(100)
+
+	DECLARE @Code1 NVARCHAR(50)
+	DECLARE @Desc1 NVARCHAR(MAX)
+	DECLARE @TypeID1 NVARCHAR(50)
+
+	DECLARE @Process NVARCHAR(20)
+	DECLARE @Speciality NVARCHAR(20)
+	DECLARE @NewNodeType NVARCHAR(20)
+	DECLARE @OldNodeType NVARCHAR(20)
+	DECLARE @SpecialtyName NVARCHAR(20)
+	DECLARE @NewSpecialtyID NVARCHAR(20)
+	DECLARE @ConfigurationID NVARCHAR(40)
+	DECLARE @BaseUserRoleID NVARCHAR(40)
+	DECLARE @TypeID NVARCHAR(40)
+
+
+	DECLARE @SZ_CONFIGURATION_ID NVARCHAR(40)
+	DECLARE @SZ_ROLE_ID NVARCHAR(40)
+
+	DECLARE @SZ_CASE_TYPE_NAME NVARCHAR(20)
+	DECLARE @SZ_CASE_TYPE_ABBRIVATION NVARCHAR(6)
+	DECLARE @SZ_ABBRIVATION_ID NVARCHAR(20)
+	DECLARE @SZ_OLD_CASE_TYPE_ABBRIVATION NVARCHAR(6)
+	DECLARE	@SZ_STATUS_NAME NVARCHAR(50) 
+	DECLARE @I_IS_ARCHIVED INT
+	DECLARE @SZ_PROCEDURE_GROUP_CODE nvarchar(10)
+	DECLARE @SZ_PROCEDURE_GROUP_ID nvarchar(40)
+	DECLARE @sz_procedure_group_id_new NVARCHAR(40) 
+
+	DECLARE @DiagnosisCode NVARCHAR(200)
+	DECLARE	@SzDescription NVARCHAR(1000)
+	DECLARE	@SzTypeID NVARCHAR(40)
+	DECLARE	@INSERTS INT = 1
+
+
+	--Script-1
+	print 's-1'
+	SELECT	@IsTestFacility=BT_REFERRING_FACILITY
+	FROM	[dbo].[MST_BILLING_COMPANY] 
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID
+	INSERT INTO [dbo].[MST_BILLING_COMPANY] 
+	(
+		SZ_COMPANY_ID,
+		SZ_COMPANY_NAME,
+		SZ_ADDRESS_STREET,
+		SZ_ADDRESS_CITY,
+		SZ_ADDRESS_ZIP,
+		SZ_ADDRESS_STATE,
+		DT_OPENED,
+		BIT_STATUS,
+		DT_CREATED,
+		BT_REFERRING_FACILITY,
+		BT_LAWFIRM,
+		SZ_CONTACT_ID,
+		SZ_CONTACT_FIRST_NAME,
+		SZ_CONTACT_LAST_NAME,
+		SZ_ADMIN_EMAIL,
+		SZ_PREFIX,
+		SZ_ACCOUNT_DOMAIN
+	)
+	VALUES
+	(
+		@CompanyIDNew,
+		@CompanyName,
+		@StreetAddress,
+		@City,
+		@ZipCode,
+		@State,
+		GETDATE(),
+		@Status,
+		GETDATE(),
+		@IsTestFacility,
+		@LawFirm,
+		@ContactID,
+		@ContactFirstName,
+		@ContactLastName,
+		@AdminEMail,
+		@CompanyPrefix,
+		@DomainID
+	)
+	print 'sc-1'
+	-- Script 2
+	print 's-2'
+
+	DECLARE @Role TABLE  
+	(
+     Id INT IDENTITY(1,1),  
+	 sz_user_role VARCHAR(100)
+	 )
+	INSERT  @Role
+	SELECT  SZ_USER_ROLE 
+	FROM	MST_USER_ROLES 
+	WHERE	sz_company_id=@BaseCompanyID
+	SET		@TotalCount = @@ROWCOUNT
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+		SELECT	@user_role = sz_user_role 
+		FROM	@Role 
+		WHERE	Id = @Counter	
+		INSERT	MST_USER_ROLES 
+		VALUES
+		(
+			dbo.FNC_GET_LATEST_ID('USER_ROLE_ID'),
+			@user_role,
+			@CompanyIDNew,
+			NULL
+		)
+		SET @Counter = @Counter + 1
+		SET @user_role = NULL
+	END
+	SET @Counter = 1
+    SET @TotalCount = 0
+
+	print 'sc-2'
+	--Script - 3
+	print 's-3'
+
+	INSERT [dbo].[MST_USERS]
+	(
+		SZ_USER_ID,
+		SZ_USER_NAME,
+		SZ_PASSWORD,
+		SZ_USER_ROLE,
+		SZ_BILLING_COMPANY,
+		SZ_DEFAULT_URL,
+		DT_CREATED,
+		DT_LAST_LOGIN,
+		SZ_DOMAIN_NAME
+	)
+	VALUES
+	(
+		@UserID,
+		@UserName,
+		@Password,
+		@UserRoleIDNew,
+		@CompanyIDNew,
+		'Bill_Sys_Default.aspx',
+		GETDATE(),
+		'2014-03-24',
+		@DomainID
+	)
+	print 'sc-3'
+	--Script-4
+	print 's-4'	
+	DECLARE @MST_VISIT_TYPE TABLE
+	(
+		Id INT IDENTITY(1,1),
+		VISIT_TYPE NVARCHAR(100),
+		SZ_COLOR_CODE NVARCHAR(100),
+		I_ORDER_BY NVARCHAR(4)
+	)
+	INSERT @MST_VISIT_TYPE
+	SELECT	VISIT_TYPE ,
+			SZ_COLOR_CODE,
+			I_ORDER_BY
+	FROM	[dbo].[MST_VISIT_TYPE]
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID
+	SET		@TotalCount = @@ROWCOUNT
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+		SELECT	@VISIT_TYPE = VISIT_TYPE,
+				@SZ_COLOR_CODE = SZ_COLOR_CODE,
+				@I_ORDER_BY = I_ORDER_BY
+		FROM	@MST_VISIT_TYPE
+		WHERE	Id = @Counter
+
+		SELECT	@VisitTypeID = 'VT' + FORMAT(SUBSTRING(MAX(VISIT_TYPE_ID), 3, LEN(MAX(VISIT_TYPE_ID)) ) + 1, '0000')
+		FROM	MST_VISIT_TYPE 
+		WHERE	VISIT_TYPE_ID<>'VY0029'
+
+		INSERT INTO [dbo].[MST_VISIT_TYPE]
+		(
+			VISIT_TYPE_ID,
+			VISIT_TYPE,
+			SZ_COMPANY_ID,
+			SZ_COLOR_CODE,
+			I_Order_by
+		)
+		VALUES
+		(
+			@VisitTypeID,
+			@VISIT_TYPE,
+			@CompanyIDNew,
+			@SZ_COLOR_CODE,
+			@I_ORDER_BY
+		)
+		SET @Counter = @Counter + 1
+		SET @VISIT_TYPE = NULL
+		SET @SZ_COLOR_CODE = NULL
+		SET @I_ORDER_BY = NULL
+
+	END
+	SET @Counter = 1
+	SET @TotalCount = 0
+
+	print 'sc-4'
+	--Script-5 
+	print 's-5'
+	DECLARE @TXN_USER_CONFIGURATION TABLE
+	(
+		Id INT IDENTITY(1,1),
+		SZ_CONFIGURATION_ID NVARCHAR(40),
+		SZ_ROLE_ID NVARCHAR(40)
+	)
+	INSERT	@TXN_USER_CONFIGURATION
+	SELECT	SZ_CONFIGURATION_ID,SZ_ROLE_ID 
+	FROM	[dbo].[TXN_USER_CONFIGURATION]
+	WHERE	SZ_COMPANY_ID=@BaseCompanyID
+	SET @TotalCount = @@ROWCOUNT
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+		SELECT	@SZ_CONFIGURATION_ID=SZ_CONFIGURATION_ID,
+				@SZ_ROLE_ID=SZ_ROLE_ID
+		FROM	@TXN_USER_CONFIGURATION
+		WHERE	Id = @Counter
+
+		INSERT	[dbo].[TXN_USER_CONFIGURATION]
+		VALUES
+		(
+			[dbo].[FNC_GET_LATEST_ID] ('USER_CONFIG'),
+			@SZ_CONFIGURATION_ID,
+			@CompanyIDNew,
+			@SZ_ROLE_ID
+		)
+
+		SET @Counter  = @Counter + 1
+		SET @SZ_CONFIGURATION_ID = NULL
+		SET @SZ_ROLE_ID = NULL
+
+	END
+
+	SET @Counter = 1
+	SET @TotalCount = 0
+	
+	print 'sc-5'
+	--Script-6
+	print 's-6'
+	
+	DECLARE @CaseType TABLE  
+	(
+		 Id INT IDENTITY(1,1),  
+		 SZ_CASE_TYPE_NAME NVARCHAR(20),
+		 SZ_CASE_TYPE_ABBRIVATION NVARCHAR(6),
+		 SZ_ABBRIVATION_ID NVARCHAR(20),
+		 SZ_OLD_CASE_TYPE_ABBRIVATION NVARCHAR(6)
+	)
+	INSERT	@CaseType 
+	SELECT	SZ_CASE_TYPE_NAME,
+			SZ_CASE_TYPE_ABBRIVATION,
+			SZ_ABBRIVATION_ID,
+			SZ_OLD_CASE_TYPE_ABBRIVATION
+	FROM	[dbo].[MST_CASE_TYPE] 
+	WHERE	SZ_COMPANY_ID=@BaseCompanyID
+ 
+	SELECT @TotalCount=COUNT(*) FROM @CaseType
+	WHILE(@Counter <= @TotalCount)
+	 BEGIN
+		SELECT	@SZ_CASE_TYPE_NAME=SZ_CASE_TYPE_NAME,
+				@SZ_CASE_TYPE_ABBRIVATION=SZ_CASE_TYPE_ABBRIVATION,
+				@SZ_ABBRIVATION_ID=SZ_ABBRIVATION_ID,
+				@SZ_OLD_CASE_TYPE_ABBRIVATION=SZ_OLD_CASE_TYPE_ABBRIVATION
+		FROM	@CaseType
+		WHERE	Id = @Counter
+		INSERT INTO [dbo].[MST_CASE_TYPE]
+		(
+			SZ_CASE_TYPE_ID,		
+			SZ_CASE_TYPE_NAME,
+			SZ_CASE_TYPE_ABBRIVATION,
+			SZ_ABBRIVATION_ID,	
+			SZ_COMPANY_ID,
+			SZ_OLD_CASE_TYPE_ABBRIVATION
+		)
+		VALUES
+		(
+			dbo.FNC_GET_LATEST_ID('CASE_TYPE_ID'),	
+			@SZ_CASE_TYPE_NAME,
+			@SZ_CASE_TYPE_ABBRIVATION,	
+			@SZ_ABBRIVATION_ID,
+			@CompanyIDNew,
+			@SZ_OLD_CASE_TYPE_ABBRIVATION	
+		)
+		SET @Counter = @Counter + 1
+		SET @SZ_CASE_TYPE_NAME = NULL
+		SET @SZ_CASE_TYPE_ABBRIVATION = NULL
+		SET @SZ_ABBRIVATION_ID = NULL
+		SET @SZ_OLD_CASE_TYPE_ABBRIVATION = NULL
+	 END
+	SET @Counter = 1
+    SET @TotalCount = 0
+
+	print 'sc-6'
+	--Script-7
+	print 's-7'
+
+	DECLARE @CaseStatus TABLE
+	(
+		 Id INT IDENTITY(1,1), 
+		 SZ_STATUS_NAME NVARCHAR(50),
+		 I_IS_ARCHIVED INT	 
+	)
+	INSERT	@CaseStatus
+	SELECT	SZ_STATUS_NAME,
+			I_IS_ARCHIVED 
+	FROM	[dbo].[MST_CASE_STATUS] 
+	WHERE	SZ_COMPANY_ID=@BaseCompanyID
+
+	SELECT @TotalCount=COUNT(*) FROM @CaseStatus
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+	
+		SELECT	@SZ_STATUS_NAME=SZ_STATUS_NAME,
+				@I_IS_ARCHIVED=I_IS_ARCHIVED 
+		FROM	@CaseStatus
+		WHERE	Id=@Counter
+		INSERT INTO [dbo].[MST_CASE_STATUS]
+		(  
+			SZ_CASE_STATUS_ID,    
+			SZ_STATUS_NAME,   
+			SZ_COMPANY_ID,
+			I_IS_ARCHIVED 
+		)  
+		VALUES  
+		(  
+			dbo.FNC_GET_LATEST_ID('CASE_STATUS_ID'),   
+			@SZ_STATUS_NAME,   
+			@CompanyIDNew,    
+			@I_IS_ARCHIVED
+		) 
+		SET @Counter = @Counter + 1
+		SET @SZ_STATUS_NAME = NULL
+		SET @I_IS_ARCHIVED = NULL
+	END
+ 	SET @Counter = 1
+    SET @TotalCount = 0
+
+	print 'sc-7'
+	--Script-8
+
+	print 's-8'
+	DECLARE @BILLSTATCURSOR TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		SZ_BILL_STATUS_NAME NVARCHAR(100),
+		SZ_COMPANY_ID NVARCHAR(20),
+		I_SELECT INT,
+		SZ_BILL_STATUS_CODE NVARCHAR(20)
+	)
+
+	INSERT	@BILLSTATCURSOR
+	SELECT	SZ_BILL_STATUS_NAME,
+			SZ_COMPANY_ID,
+			I_SELECT,
+			SZ_BILL_STATUS_CODE 
+	FROM	[dbo].[MST_BILL_STATUS] 
+	WHERE	SZ_COMPANY_ID=@BaseCompanyID
+	SET		@TotalCount=@@ROWCOUNT 
+	
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+	SELECT	@BillStatusName=SZ_BILL_STATUS_NAME,
+			@ISelect=I_SELECT,
+			@BillStatusCode=SZ_BILL_STATUS_CODE
+	FROM	@BILLSTATCURSOR
+	WHERE   Id=@Counter
+	
+	IF NOT EXISTS (
+					SELECT	SZ_BILL_STATUS_ID 
+					FROM	[dbo].[MST_BILL_STATUS] 
+					WHERE	SZ_BILL_STATUS_NAME=@BillStatusName 
+					AND		SZ_COMPANY_ID=@CompanyIDNew 
+					AND		SZ_BILL_STATUS_CODE=@BillStatusCode
+				   )
+	BEGIN
+		INSERT  [dbo].[MST_BILL_STATUS] 
+		(		
+				[SZ_BILL_STATUS_ID],
+				[SZ_BILL_STATUS_NAME],
+				[SZ_COMPANY_ID],
+				[I_SELECT],
+				[SZ_BILL_STATUS_CODE]
+		)
+		VALUES	
+		(
+				dbo.FNC_GET_LATEST_ID('BILL_STATUS_ID'),
+				@BillStatusName,
+				@CompanyIDNew,
+				@ISelect,
+				@BillStatusCode
+		)
+	END
+	
+	SET @Counter = @Counter + 1
+	SET @BillStatusName = NULL
+	SET @BillStatusCode = NULL
+	SET @ISelect = NULL
+	
+	END
+
+	SET @Counter = 1
+    SET @TotalCount = 0
+	print 'sc-8'
+	--Script-9  here
+	print 's-9'
+	SELECT @BaseUserRoleID = SZ_USER_ROLE_ID FROM [dbo].[MST_USER_ROLES]
+	INSERT  [dbo].[txn_user_access]
+	SELECT	@UserRoleIDNew,
+			I_MENU_ID
+	FROM	[dbo].[txn_user_access]
+	WHERE	sz_user_role_id = @BaseUserRoleID
+	print 'sc-9'
+	--Script-10
+	print 's-10'
+	EXEC [dbo].[sp_createRequiredDocTypesForTree] @SZ_COMPANY_ID=@CompanyIDNew
+	print 'sc-10'
+	--Script-11
+	print 's-11'
+	DECLARE @MST_INSURANCE_COMPANY TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		sz_insurance_id NVARCHAR(40),
+		SZ_INSURANCE_NAME NVARCHAR(300),
+		SZ_CARRIER_CODE NVARCHAR(100),
+		SZ_INSURANCE_ADDRESS NVARCHAR(500),
+		SZ_INSURANCE_STREET NVARCHAR(100),
+		SZ_INSURANCE_STATE NVARCHAR(100),
+		SZ_INSURANCE_CITY  NVARCHAR(100),
+		SZ_INSURANCE_ZIP NVARCHAR(100),
+		SZ_INSURANCE_PHONE NVARCHAR(100),
+		SZ_INSURANCE_EMAIL NVARCHAR(100),
+		SZ_COMPANY_ID NVARCHAR(40),
+		SZ_INSURANCE_COMPANY_CODE NVARCHAR(100),
+		SZ_CONTACT_PERSON NVARCHAR(400),
+		SZ_FAX_NUMBER  NVARCHAR(200)
+	)
+
+	INSERT	@MST_INSURANCE_COMPANY
+	SELECT	sz_insurance_id,
+			SZ_INSURANCE_NAME, 
+			SZ_CARRIER_CODE, 
+			SZ_INSURANCE_ADDRESS, 
+			SZ_INSURANCE_STREET, 
+			SZ_INSURANCE_STATE, 
+			SZ_INSURANCE_CITY, 
+			SZ_INSURANCE_ZIP,
+			SZ_INSURANCE_PHONE, 
+			SZ_INSURANCE_EMAIL, 
+			SZ_COMPANY_ID, 
+			SZ_INSURANCE_COMPANY_CODE, 
+			SZ_CONTACT_PERSON,
+			SZ_FAX_NUMBER  
+	FROM	[dbo].[MST_INSURANCE_COMPANY]
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID
+	SET		@TotalCount=@@ROWCOUNT
+		
+		   
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+	SELECT	@InsurenceID=sz_insurance_id, 
+			@InsurenceName=SZ_INSURANCE_NAME, 
+			@CarrierCode=SZ_CARRIER_CODE, 
+			@InsurenceAddress=SZ_INSURANCE_ADDRESS,
+			@InsurenceStreet=SZ_INSURANCE_STREET, 
+			@InsurenceState=SZ_INSURANCE_STATE, 
+			@InsurenceCity=SZ_INSURANCE_CITY, 
+			@InsurenceZip=SZ_INSURANCE_ZIP, 
+			@InsurencePhone=SZ_INSURANCE_PHONE, 
+			@InsurenceEmail=SZ_INSURANCE_EMAIL, 
+			@InsurenceCompanyCode=SZ_INSURANCE_COMPANY_CODE,
+			@ContactPerson=SZ_CONTACT_PERSON, 
+			@FaxNumber=SZ_FAX_NUMBER 
+	FROM	@MST_INSURANCE_COMPANY
+	WHERE	Id=@Counter
+
+	DECLARE @sz_latest_insurance_id NVARCHAR(20)
+	SET @sz_latest_insurance_id = dbo.FNC_GET_LATEST_ID('INSURANCE_ID')
+
+	INSERT	[dbo].[MST_INSURANCE_COMPANY]
+	( 
+		SZ_INSURANCE_ID, 
+		SZ_INSURANCE_NAME, 
+		SZ_CARRIER_CODE, 
+		SZ_INSURANCE_ADDRESS, 
+		SZ_INSURANCE_STREET, 
+		SZ_INSURANCE_STATE, 
+		SZ_INSURANCE_CITY, 
+		SZ_INSURANCE_ZIP,
+		SZ_INSURANCE_PHONE, 
+		SZ_INSURANCE_EMAIL, 
+		SZ_COMPANY_ID, 
+		SZ_INSURANCE_COMPANY_CODE, 
+		SZ_CONTACT_PERSON, 
+		SZ_FAX_NUMBER 
+	)
+	VALUES	
+	(
+		@sz_latest_insurance_id, 
+		@InsurenceName, 
+		@CarrierCode, 
+		@InsurenceAddress, 
+		@InsurenceStreet, 
+		@InsurenceState, 
+		@InsurenceCity,
+		@InsurenceZip, 
+		@InsurencePhone, 
+		@InsurenceEmail,
+		@CompanyIDNew, 
+		@InsurenceCompanyCode, 
+		@ContactPerson, 
+		@FaxNumber
+	)
+
+	DECLARE @sz_latest_address_id NVARCHAR(20)
+	SET @sz_latest_address_id = dbo.FNC_GET_LATEST_ID('INSURANCE_ADDRESS')
+	INSERT	INTO [dbo].[MST_INSURANCE_ADDRESS]
+	(
+		SZ_INS_ADDRESS_ID,
+		SZ_INSURANCE_ID,
+		SZ_INSURANCE_ADDRESS,
+		SZ_INSURANCE_STREET,
+		SZ_INSURANCE_CITY,
+		SZ_INSURANCE_STATE,
+		SZ_INSURANCE_ZIP,
+		SZ_COMPANY_ID,
+		SZ_INSURANCE_STATE_ID
+	)
+	SELECT	@sz_latest_address_id, 
+			@sz_latest_insurance_id, 
+			sz_insurance_address, 
+			sz_insurance_street, 
+			sz_insurance_city, 
+			sz_insurance_state, 
+			sz_insurance_zip, 
+			@CompanyIDNew, 
+			sz_insurance_state_id  
+	FROM	[dbo].[MST_INSURANCE_ADDRESS]
+	WHERE	sz_insurance_id = @InsurenceID
+	AND		SZ_COMPANY_ID = @BaseCompanyID
+	SET		@TotalCount1=@@ROWCOUNT
+	SET @Counter = @Counter + 1
+
+
+	SET @InsurenceID = NULL
+	SET @InsurenceName = NULL
+	SET @CarrierCode = NULL
+	SET @InsurenceAddress = NULL
+	SET @InsurenceStreet = NULL
+	SET @InsurenceState = NULL
+	SET @InsurenceCity  = NULL
+	SET @InsurenceZip = NULL
+	SET @InsurencePhone = NULL
+	SET @InsurenceEmail = NULL
+	SET @InsurenceCompanyCode = NULL
+	SET @ContactPerson = NULL
+	SET @FaxNumber  = NULL
+	
+	
+	END
+	SET @Counter = 1
+	SET @Counter1 = 1
+    SET @TotalCount = 0
+    SET @TotalCount1 = 0
+	print 'sc-11'
+	--Script-12.
+	print 's-12'
+
+	DECLARE @mst_procedure_group TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		sz_procedure_group_id NVARCHAR(40),
+		SZ_PROCEDURE_GROUP NVARCHAR(300),
+		IS_PRINTABLE BIT,
+		BT_UNIT BIT,
+		I_ORDER INT,
+		BT_IS_IN_ORDER BIT,
+		SZ_CODE NVARCHAR(40),
+		BT_DISPLAY BIT,
+		BT_INITIAL_EVALUATION BIT,
+		bt_associate_to_patient BIT,
+		bt_include_1500 BIT
+	) 
+	INSERT	@mst_procedure_group
+	SELECT  sz_procedure_group_id, 
+			SZ_PROCEDURE_GROUP,
+			IS_PRINTABLE,
+			BT_UNIT, 
+			I_ORDER, 
+			BT_IS_IN_ORDER, 
+			SZ_CODE, 
+			BT_DISPLAY, 
+			BT_INITIAL_EVALUATION,
+			bt_associate_to_patient,
+			bt_include_1500 
+	FROM	[dbo].[MST_PROCEDURE_GROUP]
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID
+	SET		@TotalCount=@@ROWCOUNT
+
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+
+		SELECT	@ProcedureGroupID=sz_procedure_group_id,
+				@SZ_PROCEDURE_GROUP=SZ_PROCEDURE_GROUP, 
+				@IsPrintable=IS_PRINTABLE,
+				@BtUnit=BT_UNIT, 
+				@IOrder=I_ORDER, 
+				@IsInOrder=BT_IS_IN_ORDER, 
+				@Code=SZ_CODE, 
+				@Display=BT_DISPLAY, 
+				@InitialEvaluation=BT_INITIAL_EVALUATION,
+				@AssociateToPatient=bt_associate_to_patient,
+				@Include1500=bt_include_1500 
+		FROM	@mst_procedure_group
+		WHERE	Id=@Counter
+	SET @sz_procedure_group_id_new = dbo.FNC_GET_LATEST_ID('PROCEDURE_GROUP_ID')
+	INSERT [dbo].[MST_PROCEDURE_GROUP] 
+	(
+		SZ_PROCEDURE_GROUP_ID, 
+		SZ_PROCEDURE_GROUP, 
+		SZ_COMPANY_ID, 
+		IS_PRINTABLE,
+		BT_UNIT, 
+		I_ORDER, 
+		BT_IS_IN_ORDER, 
+		SZ_CODE, 
+		BT_DISPLAY, 
+		BT_INITIAL_EVALUATION,
+		bt_associate_to_patient,
+		bt_include_1500
+	)
+	VALUES
+	(
+		@sz_procedure_group_id_new,
+		@SZ_PROCEDURE_GROUP,
+		@CompanyIDNew, 
+		@IsPrintable,
+		@BtUnit, 
+		@IOrder, 
+		@IsInOrder, 
+		@Code, 
+		@Display, 
+		@InitialEvaluation,
+		@AssociateToPatient,
+		@Include1500
+	)
+------------------- enter procedure codes in mst_bill_proc_type table
+	
+	DECLARE  @SZ_type_CODE NVARCHAR(50) 
+    DECLARE  @SZ_type_DESCRIPTION  NVARCHAR(250)
+	
+	DECLARE @mst_bill_proc_type TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		SZ_type_CODE NVARCHAR(50),
+		SZ_type_DESCRIPTION NVARCHAR(250),
+		SZ_TYPE_ID NVARCHAR(40)
+	)
+	INSERT	@mst_bill_proc_type
+	SELECT  SZ_type_CODE, 
+			SZ_type_DESCRIPTION,
+			SZ_TYPE_ID
+	FROM	[dbo].[MST_BILL_PROC_TYPE] 
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID 
+	AND		SZ_PROCEDURE_GROUP_ID=@sz_procedure_group_id  
+	SET		@TotalCount1 = @@ROWCOUNT
+	WHILE(@Counter1 <= @TotalCount1)
+	BEGIN
+	
+	SELECT  @SZ_type_CODE=SZ_type_CODE, 
+			@SZ_type_DESCRIPTION=SZ_type_DESCRIPTION,
+			@TypeID = SZ_TYPE_ID
+	FROM	@mst_bill_proc_type 
+	WHERE   Id = @Counter1
+
+	INSERT INTO [dbo].[MST_BILL_PROC_TYPE]      
+	(      
+		SZ_TYPE_CODE_ID,
+		SZ_TYPE_CODE,       
+		SZ_TYPE_DESCRIPTION,      
+		SZ_TYPE_ID,
+		SZ_PROCEDURE_GROUP_ID,      
+		SZ_COMPANY_ID
+	)      
+	VALUES      
+	(    
+		dbo.FNC_GET_LATEST_ID('SZ_TYPE_CODE_ID'),          
+		@SZ_type_CODE,       
+		@SZ_type_DESCRIPTION,      
+		@TypeID,      
+		@sz_procedure_group_id_new,      
+		@CompanyIDNew
+	)    
+			   
+		SET @Counter1 = @Counter1 + 1
+		SET @SZ_type_CODE = NULL
+		SET @SZ_type_DESCRIPTION = NULL
+	END
+	SET @Counter1 = 1
+	SET @TotalCount1 = 0
+-------------------- enter procedure codes in mst_procedure_codes table
+
+	DECLARE	@SZ_PROCEDURE_CODE NVARCHAR(50) 
+	DECLARE	@SZ_CODE_DESCRIPTION NVARCHAR(250)
+	DECLARE @FLT_AMOUNT float
+	DECLARE @I_VISIT_TYPE int
+	
+	DECLARE @MST_PROCEDURE_CODES TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		SZ_PROCEDURE_CODE NVARCHAR(50),
+		SZ_CODE_DESCRIPTION NVARCHAR(250),
+		FLT_AMOUNT FLOAT, 
+		I_VISIT_TYPE INT
+	)
+	INSERT	@MST_PROCEDURE_CODES 
+	SELECT	SZ_PROCEDURE_CODE,
+			SZ_CODE_DESCRIPTION,
+			FLT_AMOUNT, 
+			I_VISIT_TYPE   
+	FROM	[dbo].[MST_PROCEDURE_CODES]
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID
+	AND		sz_procedure_group_id = @sz_procedure_group_id
+	SET		@TotalCount1 = @@ROWCOUNT
+	WHILE(@Counter1 <= @TotalCount1)
+	BEGIN
+		
+		SELECT	@SZ_PROCEDURE_CODE=SZ_PROCEDURE_CODE,
+				@SZ_CODE_DESCRIPTION=SZ_CODE_DESCRIPTION,
+				@FLT_AMOUNT=FLT_AMOUNT, 
+				@I_VISIT_TYPE=I_VISIT_TYPE
+		FROM	@MST_PROCEDURE_CODES 
+		WHERE	Id = @Counter1
+		INSERT INTO [dbo].[MST_PROCEDURE_CODES]      
+		(      
+		SZ_PROCEDURE_ID,        
+		SZ_PROCEDURE_CODE,       
+		SZ_CODE_DESCRIPTION,      
+		FLT_AMOUNT,      
+		SZ_PROCEDURE_GROUP_ID,      
+		SZ_COMPANY_ID ,  
+		I_VISIT_TYPE     
+		)      
+		VALUES      
+		(      
+		dbo.FNC_GET_LATEST_ID('PROCEDURE_ID'),       
+		@SZ_PROCEDURE_CODE,       
+		@SZ_CODE_DESCRIPTION,      
+		@FLT_AMOUNT,      
+		@sz_procedure_group_id_new,      
+		@CompanyIDNew,  
+		@I_VISIT_TYPE     
+		)
+
+		SET @Counter1 = @Counter1 + 1 
+		SET @SZ_PROCEDURE_CODE = NULL
+		SET @SZ_CODE_DESCRIPTION = NULL
+		SET @FLT_AMOUNT = NULL
+		SET @I_VISIT_TYPE = NULL
+		
+	 END
+		SET @Counter = @Counter + 1 
+		SET @sz_procedure_group_id = NULL
+		SET @SZ_PROCEDURE_GROUP = NULL
+		SET @IsPrintable = NULL
+		SET @BtUnit = NULL
+		SET @IOrder = NULL
+		SET @IsInOrder = NULL
+		SET @Code = NULL
+		SET @Display = NULL
+		SET @InitialEvaluation = NULL
+		SET @AssociateToPatient = NULL
+		SET @Include1500 = NULL	
+	END
+    SET @Counter = 1
+    SET @Counter1= 1
+    SET @TotalCount = 0
+    SET @TotalCount1 = 0
+	print 'sc-12'
+	--Script-13
+	print 's-13'
+	DECLARE @mst_diagnosis_type TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		sz_diagnosis_type_id NVARCHAR(100),
+		sz_diagnosis_type NVARCHAR(100)
+	)
+	INSERT  @mst_diagnosis_type
+	SELECT	sz_diagnosis_type_id,
+			sz_diagnosis_type 
+	FROM	[dbo].[MST_DIAGNOSIS_TYPE] 
+	WHERE	sz_company_id=@BaseCompanyID
+	SET		@TotalCount = @@ROWCOUNT
+
+	
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+
+		SELECT	@DiagnosisTypeId=sz_diagnosis_type_id,
+				@DiagnosisType=sz_diagnosis_type 
+		FROM	@mst_diagnosis_type 
+		WHERE	Id=@Counter
+
+		DECLARE  @NEW_DIA_TYPE_CODE  NVARCHAR(MAX)
+
+		INSERT	MST_DIAGNOSIS_TYPE 
+		VALUES
+		(
+			dbo.FNC_GET_LATEST_ID('DIAGNOSIS_TYPE_ID'),
+			@DiagnosisType,
+			@CompanyIDNew
+		)
+		SET @NEW_DIA_TYPE_CODE = (SELECT MAX(SZ_DIAGNOSIS_TYPE_ID) FROM MST_DIAGNOSIS_TYPE WHERE SZ_COMPANY_ID = @CompanyIDNew)
+
+		DECLARE @MST_DIAGNOSIS_CODE TABLE
+		(
+			Id INT IDENTITY(1,1),
+			sz_diagnosis_code NVARCHAR(200),
+			sz_description NVARCHAR(1000),
+			sz_type_id NVARCHAR(40)
+		)
+		INSERT	@MST_DIAGNOSIS_CODE
+		SELECT	sz_diagnosis_code,
+				sz_description,
+				sz_type_id
+		FROM	[dbo].[MST_DIAGNOSIS_CODE]
+		WHERE	SZ_COMPANY_ID=@BaseCompanyID
+		AND		sz_diagnosis_type_id=@DiagnosisTypeId 
+		SET		@TotalCount1 = @@ROWCOUNT
+
+
+
+		WHILE(@Counter1 <= @TotalCount1)
+		BEGIN
+
+			SELECT	@DiagnosisCode = sz_diagnosis_code,
+					@SzDescription = sz_description,
+					@SzTypeID = sz_type_id
+			FROM	@MST_DIAGNOSIS_CODE
+			WHERE	Id = @Counter1
+
+			INSERT [dbo].[MST_DIAGNOSIS_CODE]
+			VALUES
+			(
+				dbo.FNC_GET_LATEST_ID('DIAGNOSIS_CODE_ID'),
+				@DiagnosisCode,
+				@SzDescription,
+				@NEW_DIA_TYPE_CODE,
+				@CompanyIDNew,
+				NULL,
+				NULL,
+				@SzTypeID
+			)
+
+			SET @Counter1 = @Counter1 + 1
+			SET @DiagnosisCode = NULL
+			SET @SzDescription = NULL
+			SET @SzTypeID = NULL
+
+		END
+
+		SET @Counter1 = 1
+		SET @TotalCount1 = 0
+		SET @Counter = @Counter + 1
+		SET @DiagnosisType = NULL
+		SET @DiagnosisTypeId = NULL
+	END
+	SET @Counter = 1
+	SET @TotalCount = 0
+	SET @Counter = 1
+	SET @TotalCount = 0
+
+
+	print 'sc-13'
+	--Script-14
+	print 's-14'
+	DECLARE @TXN_PROCESS_DETAILS TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		SZ_PROCESS NVARCHAR(20),
+		SZ_SPECIALITY NVARCHAR(20),
+		SZ_NEW_NODE_TYPE NVARCHAR(20),
+		SZ_OLD_NODE_TYPE NVARCHAR(20)
+	)
+	INSERT	@TXN_PROCESS_DETAILS
+	SELECT	SZ_PROCESS, 
+			SZ_SPECIALITY, 
+			SZ_NEW_NODE_TYPE,
+			SZ_OLD_NODE_TYPE
+	FROM	[dbo].[TXN_PROCESS_DETAILS]
+	WHERE	SZ_COMPANY_ID=@BaseCompanyID
+	SET		@TotalCount=@@ROWCOUNT
+
+	WHILE(@Counter <= @TotalCount)
+	BEGIN
+
+		SELECT	@Process=SZ_PROCESS, 
+				@Speciality=SZ_SPECIALITY,  
+				@NewNodeType=SZ_NEW_NODE_TYPE, 
+				@OldNodeType=SZ_OLD_NODE_TYPE  
+		FROM	@TXN_PROCESS_DETAILS 
+		WHERE	Id=@Counter
+		SET @SpecialtyName = (select SZ_PROCEDURE_GROUP from MST_PROCEDURE_GROUP where SZ_PROCEDURE_GROUP_ID=@Speciality and SZ_COMPANY_ID=@BaseCompanyID)
+		SET @NewSpecialtyID = (select SZ_PROCEDURE_GROUP_ID from MST_PROCEDURE_GROUP where SZ_PROCEDURE_GROUP=@SpecialtyName and SZ_COMPANY_ID=@CompanyIDNew)
+	
+		IF NOT EXISTS(SELECT * FROM TXN_PROCESS_DETAILS WHERE SZ_SPECIALITY=@NewSpecialtyID AND SZ_COMPANY_ID=@CompanyIDNew AND SZ_PROCESS=@Process)
+		BEGIN
+
+			INSERT [dbo].[TXN_PROCESS_DETAILS]
+			(
+				SZ_PROCESS, 
+				SZ_SPECIALITY, 
+				SZ_NEW_NODE_TYPE, 
+				SZ_OLD_NODE_TYPE, 
+				SZ_COMPANY_ID
+			)
+			VALUES 
+			(
+				@Process, 
+				@NewSpecialtyID, 
+				@NewNodeType,
+				@OldNodeType,
+				@CompanyIDNew
+			)
+		END
+	
+		SET @Counter = @Counter + 1 
+		SET @Process = NULL
+		SET @NewSpecialtyID = NULL
+		SET @NewNodeType = NULL
+		SET @OldNodeType = NULL
+
+	END
+	SET @Counter = 1
+	SET @TotalCount = 0
+	print 'sc-14'
+
+	--Script-15
+
+	print 's-15'
+	INSERT	[dbo].[MST_UPLOAD_DOCUMENT_TYPES] 
+	(
+		SZ_DOCUMENT_SOURCE, 
+		SZ_DOCUMENT_TYPE, 
+		SZ_COMPANY_ID
+	) 
+	SELECT	SZ_DOCUMENT_SOURCE, 
+			SZ_DOCUMENT_TYPE, 
+			@CompanyIDNew
+	FROM	[dbo].[MST_UPLOAD_DOCUMENT_TYPES] 
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID
+	print 'sc-15'
+	--Script-16
+	print 's-16'
+
+	DECLARE @MST_PROCEDURE_GROUP2 TABLE
+	(
+		Id INT IDENTITY(1,1), 
+		SZ_PROCEDURE_GROUP_CODE NVARCHAR(10),
+		SZ_COMPANY_ID NVARCHAR(20),
+		SZ_PROCEDURE_GROUP_ID NVARCHAR(20)
+	)
+	INSERT	@MST_PROCEDURE_GROUP2
+	SELECT	SZ_PROCEDURE_GROUP_CODE,
+			@CompanyIDNew,
+			SZ_PROCEDURE_GROUP_ID 
+	FROM	[dbo].[MST_PROCEDURE_GROUP]
+	WHERE	SZ_PROCEDURE_GROUP_CODE IS NOT NULL 
+	AND		SZ_PROCEDURE_GROUP_CODE <> '' 
+	AND		SZ_PROCEDURE_GROUP_CODE in('AC','CH','PT') 
+	AND		SZ_COMPANY_ID=@BaseCompanyID
+	SET		@TotalCount=@@ROWCOUNT
+
+	WHILE(@Counter <= @totalCount)
+	BEGIN
+	
+		SELECT	@ProcedureGroupCode=SZ_PROCEDURE_GROUP_CODE,
+				@ProcedureGroupID=SZ_PROCEDURE_GROUP_ID 
+		FROM	@MST_PROCEDURE_GROUP2
+		WHERE	Id=@Counter
+	
+		IF(@ProcedureGroupCode='AC')
+		BEGIN
+			INSERT	[dbo].[txn_sign_table_configuration]
+			(
+				sz_company_id,
+				sz_speciality_id,
+				sz_speciality_name,
+				sz_table_name,
+				sz_doctor_sign_column,
+				sz_patient_sign_column,
+				sz_patient_sign_success_column,
+				sz_doctor_sign_success_column,
+				sz_barcode_sign_column
+			)
+			VALUES
+			(
+				@CompanyIDNew,
+				@ProcedureGroupID,
+				'AC',
+				'MST_ACCU_FOLLOWUP',
+				'SZ_PROVIDER_SIGN_PATH',
+				'SZ_PATIENT_SIGN_PATH',
+				'bt_pat_sign_success',
+				'bt_doc_sign_success',
+				'SZ_BARCODE_PATH'
+			)
+		END
+		ELSE IF(@ProcedureGroupCode='CH')
+		BEGIN
+			INSERT [dbo].[txn_sign_table_configuration]
+			(
+				sz_company_id,
+				sz_speciality_id,
+				sz_speciality_name,
+				sz_table_name,
+				sz_doctor_sign_column,
+				sz_patient_sign_column,
+				sz_patient_sign_success_column,
+				sz_doctor_sign_success_column,
+				sz_barcode_sign_column
+			)
+			VALUES
+			(
+				@CompanyIDNew,
+				@ProcedureGroupID,
+				'CH',
+				'MST_CH_NOTES',
+				'SZ_DOCTOR_SIGN_PATH',
+				'SZ_PATIENT_SIGN_PATH',
+				'bt_pat_sign_success',
+				'bt_doc_sign_success',
+				'SZ_BARCODE_PATH'
+			)
+		END
+		ELSE IF(@ProcedureGroupCode='PT')
+		BEGIN
+			INSERT	[dbo].[txn_sign_table_configuration]
+			(
+				sz_company_id,
+				sz_speciality_id,
+				sz_speciality_name,
+				sz_table_name,
+				sz_doctor_sign_column,
+				sz_patient_sign_column,
+				sz_patient_sign_success_column,
+				sz_doctor_sign_success_column,
+				sz_barcode_sign_column
+			)
+			VALUES
+			(
+				@CompanyIDNew,
+				@ProcedureGroupID,
+				'PT',
+				'MST_PT_NOTES',
+				'SZ_DOCTOR_SIGN_PATH',
+				'SZ_PATIENT_SIGN_PATH',
+				'bt_pat_sign_success',
+				'bt_doc_sign_success',
+				'SZ_BARCODE_PATH'
+			)
+		END
+	
+		SET @Counter = @Counter + 1
+		SET @ProcedureGroupCode = NULL
+		SET @ProcedureGroupID = NULL
+
+	END
+	SET @Counter = 1
+	SET @TotalCount = 0
+	print 'sc-16'
+	--Script-17
+	print 's-17'
+	INSERT	[dbo].[MST_POM_ENVELOPE_CONFIGURATION] 
+	(
+		SZ_COMPANY_ID,
+		SZ_ENVELOPE_TYPE,
+		SZ_TEMPLATE_PATH,
+		DT_CREATED
+	) 
+	SELECT	@CompanyIDNew,
+			SZ_ENVELOPE_TYPE,
+			SZ_TEMPLATE_PATH,
+			GETDATE()
+	FROM	[dbo].[MST_POM_ENVELOPE_CONFIGURATION] 
+	WHERE	SZ_COMPANY_ID = @BaseCompanyID 
+	print 'sc-17'
+COMMIT TRANSACTION
+Select 'SUCCESSFULL'
+END TRY
+BEGIN CATCH 
+	print 'rollback'
+	Select ERROR_MESSAGE()
+	IF @@TRANCOUNT>0
+		ROLLBACK TRANSACTION
+END CATCH
+
+END ---Procedure End
+
