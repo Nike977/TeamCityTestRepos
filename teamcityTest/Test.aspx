@@ -27,6 +27,9 @@
              Country:<br>
             <input type="text" name="country" placeholder="Country">
             <br>
+             City:<br>
+            <input type="text" name="city" placeholder="City">
+            <br>
             <br>
             <input type="submit" value="Submit">
         </div>
