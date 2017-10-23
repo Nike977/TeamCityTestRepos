@@ -21,6 +21,9 @@
              Phone No:<br>
             <input type="text" name="phoneNo" placeholder="Phone No">
             <br>
+            Gender:<br>
+            <input type="text" name="gender" placeholder="Gender">
+            <br>
             <br>
             <input type="submit" value="Submit">
         </div>
