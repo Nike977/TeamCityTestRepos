@@ -24,6 +24,9 @@
             Gender:<br>
             <input type="text" name="gender" placeholder="Gender">
             <br>
+             Country:<br>
+            <input type="text" name="country" placeholder="Country">
+            <br>
             <br>
             <input type="submit" value="Submit">
         </div>
